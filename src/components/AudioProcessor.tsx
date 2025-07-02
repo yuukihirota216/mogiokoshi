@@ -13,6 +13,10 @@ interface AudioProcessorProps {
   onError: (error: string) => void
 }
 
+interface WindowWithWebkitAudioContext extends Window {
+  webkitAudioContext?: typeof AudioContext
+}
+
 interface ProcessingState {
   stage: 'idle' | 'splitting' | 'transcribing' | 'merging' | 'completed' | 'error'
   progress: number
@@ -51,7 +55,6 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
   useEffect(() => {
     if (file && isClient) {
       const fileSizeMB = file.size / 1024 / 1024
-      const duration = file.size / (1024 * 1024) * 60 // 概算（1MB ≈ 1分）
       
       // 大きなファイルの場合、より効率的な設定に調整
       if (fileSizeMB > 50) {

@@ -11,6 +11,10 @@ export interface AudioSplitOptions {
   overlap: number // オーバーラップ（秒）
 }
 
+interface WindowWithWebkitAudioContext extends Window {
+  webkitAudioContext?: typeof AudioContext
+}
+
 export class AudioProcessor {
   private audioContext: AudioContext | null = null
 
@@ -28,7 +32,11 @@ export class AudioProcessor {
     }
 
     if (!this.audioContext) {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const AudioContextClass = window.AudioContext || (window as WindowWithWebkitAudioContext).webkitAudioContext
+      if (!AudioContextClass) {
+        throw new Error('Web Audio APIがサポートされていません')
+      }
+      this.audioContext = new AudioContextClass()
     }
     
     if (this.audioContext.state === 'suspended') {
@@ -49,7 +57,7 @@ export class AudioProcessor {
       }
 
       // Web Audio API対応チェック
-      if (!window.AudioContext && !(window as any).webkitAudioContext) {
+      if (!window.AudioContext && !(window as WindowWithWebkitAudioContext).webkitAudioContext) {
         throw new Error('お使いのブラウザはWeb Audio APIをサポートしていません')
       }
 
