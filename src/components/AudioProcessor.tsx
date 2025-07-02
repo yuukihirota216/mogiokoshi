@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -8,7 +8,7 @@ import { AudioProcessor as AudioUtil, AudioSplitOptions } from '@/utils/audioUti
 import { GroqAPIClient, TranscriptionResult, TranscriptionOptions } from '@/utils/apiUtils'
 
 interface AudioProcessorProps {
-  file: File | null
+  file: File
   onTranscriptionComplete: (result: TranscriptionResult) => void
   onError: (error: string) => void
 }
@@ -37,18 +37,51 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
     concurrency: 3 // デフォルトを3に変更
   })
 
+  const [isClient, setIsClient] = useState(false)
   const audioUtilRef = useRef<AudioUtil | null>(null)
   const apiClientRef = useRef<GroqAPIClient | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
+  // クライアントサイドでのみ初期化
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // ファイルサイズに基づく自動設定
+  useEffect(() => {
+    if (file && isClient) {
+      const fileSizeMB = file.size / 1024 / 1024
+      const duration = file.size / (1024 * 1024) * 60 // 概算（1MB ≈ 1分）
+      
+      // 大きなファイルの場合、より効率的な設定に調整
+      if (fileSizeMB > 50) {
+        setSettings(prev => ({
+          ...prev,
+          segmentDuration: 120, // 2分セグメント
+          concurrency: 2 // 並列数を減らして安定性を向上
+        }))
+      } else if (fileSizeMB > 20) {
+        setSettings(prev => ({
+          ...prev,
+          segmentDuration: 90, // 1.5分セグメント
+          concurrency: 3
+        }))
+      }
+    }
+  }, [file, isClient])
+
   const initializeProcessors = useCallback(() => {
+    if (!isClient) {
+      throw new Error('音声処理はブラウザ環境でのみ利用可能です')
+    }
+    
     if (!audioUtilRef.current) {
       audioUtilRef.current = new AudioUtil()
     }
     if (!apiClientRef.current) {
       apiClientRef.current = new GroqAPIClient()
     }
-  }, [])
+  }, [isClient])
 
   const startTranscription = useCallback(async () => {
     if (!file) return
@@ -183,6 +216,28 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
     return null
   }
 
+  // クライアントサイドでない場合の表示
+  if (!isClient) {
+    return (
+      <Card className="w-full max-w-2xl mx-auto mt-6">
+        <CardHeader>
+          <CardTitle>音声処理</CardTitle>
+          <CardDescription>
+            {file.name} ({(file.size / 1024 / 1024).toFixed(1)}MB)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="text-gray-500 mb-4">
+              音声処理を初期化中...
+            </div>
+            <Progress value={0} className="w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="w-full max-w-2xl mx-auto mt-6">
       <CardHeader>
@@ -203,9 +258,10 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
                   onChange={(e) => setSettings(prev => ({ ...prev, segmentDuration: Number(e.target.value) }))}
                   className="w-full mt-1 p-2 border rounded"
                 >
-                  <option value={30}>30秒</option>
-                  <option value={60}>60秒</option>
-                  <option value={120}>120秒</option>
+                  <option value={30}>30秒（短い音声）</option>
+                  <option value={60}>60秒（標準）</option>
+                  <option value={90}>90秒（長い音声）</option>
+                  <option value={120}>120秒（2時間以上）</option>
                 </select>
               </div>
               <div>
@@ -215,14 +271,13 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
                   onChange={(e) => setSettings(prev => ({ ...prev, concurrency: Number(e.target.value) }))}
                   className="w-full mt-1 p-2 border rounded"
                 >
+                  <option value={1}>1並列（安定性重視）</option>
                   <option value={2}>2並列（推奨）</option>
                   <option value={3}>3並列</option>
-                  <option value={5}>5並列</option>
-                  <option value={8}>8並列（注意）</option>
-                  <option value={10}>10並列（注意）</option>
+                  <option value={5}>5並列（注意）</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  並列数を上げると速度が向上しますが、レート制限エラーが発生しやすくなります
+                  長い音声ファイルは並列数を下げると安定します
                 </p>
               </div>
             </div>
@@ -260,6 +315,9 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
                 <div>レート制限対策: リクエスト間隔を3秒に調整中</div>
                 {settings.concurrency > 3 && (
                   <div className="text-orange-600">⚠️ 並列数を下げるとレート制限エラーを減らせます</div>
+                )}
+                {processing.segmentsTotal > 50 && (
+                  <div className="text-blue-600">📊 長い音声ファイルの処理中です。ブラウザを閉じないでください。</div>
                 )}
               </div>
             )}

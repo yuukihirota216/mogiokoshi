@@ -16,11 +16,19 @@ export class AudioProcessor {
 
   constructor() {
     // Web Audio APIの初期化は実際に使用する時に行う
+    // サーバーサイドでは実行しない
+    if (typeof window !== 'undefined') {
+      // クライアントサイドでのみ初期化
+    }
   }
 
   private async initAudioContext(): Promise<AudioContext> {
+    if (typeof window === 'undefined') {
+      throw new Error('Web Audio APIはブラウザ環境でのみ利用可能です')
+    }
+
     if (!this.audioContext) {
-      this.audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
     }
     
     if (this.audioContext.state === 'suspended') {
@@ -35,6 +43,16 @@ export class AudioProcessor {
     options: AudioSplitOptions = { segmentDuration: 60, overlap: 1 }
   ): Promise<AudioSegment[]> {
     try {
+      // ブラウザ環境チェック
+      if (typeof window === 'undefined') {
+        throw new Error('音声処理はブラウザ環境でのみ実行可能です')
+      }
+
+      // Web Audio API対応チェック
+      if (!window.AudioContext && !(window as any).webkitAudioContext) {
+        throw new Error('お使いのブラウザはWeb Audio APIをサポートしていません')
+      }
+
       const audioContext = await this.initAudioContext()
       const arrayBuffer = await file.arrayBuffer()
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
@@ -42,7 +60,19 @@ export class AudioProcessor {
       return this.splitAudioBuffer(audioBuffer, options)
     } catch (error) {
       console.error('Audio splitting failed:', error)
-      throw new Error('音声ファイルの分割に失敗しました: ' + (error as Error).message)
+      
+      // エラーの種類に応じたメッセージ
+      if (error instanceof Error) {
+        if (error.message.includes('Web Audio API')) {
+          throw new Error('音声処理エラー: ' + error.message)
+        } else if (error.message.includes('decodeAudioData')) {
+          throw new Error('音声ファイルの形式がサポートされていません。MP3、WAV、M4A、OGG、FLAC形式をご利用ください。')
+        } else {
+          throw new Error('音声ファイルの分割に失敗しました: ' + error.message)
+        }
+      }
+      
+      throw new Error('音声ファイルの分割に失敗しました: 予期しないエラーが発生しました')
     }
   }
 
