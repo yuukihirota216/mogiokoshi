@@ -52,9 +52,10 @@ export default function AudioUploader({ onFileSelect, isProcessing }: AudioUploa
       
       // クリーンアップ
       return () => {
-        if (fileInputRef.current) {
-          fileInputRef.current.removeEventListener('change', handleInputChange)
-          fileInputRef.current.removeEventListener('input', handleInputChange)
+        const currentRef = fileInputRef.current
+        if (currentRef) {
+          currentRef.removeEventListener('change', handleInputChange)
+          currentRef.removeEventListener('input', handleInputChange)
         }
       }
     }

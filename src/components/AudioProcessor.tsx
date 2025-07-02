@@ -13,10 +13,6 @@ interface AudioProcessorProps {
   onError: (error: string) => void
 }
 
-interface WindowWithWebkitAudioContext extends Window {
-  webkitAudioContext?: typeof AudioContext
-}
-
 interface ProcessingState {
   stage: 'idle' | 'splitting' | 'transcribing' | 'merging' | 'completed' | 'error'
   progress: number
