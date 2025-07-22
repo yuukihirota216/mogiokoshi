@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const audioFile = formData.get('file') as File
     const language = formData.get('language') as string || 'ja'
-    const model = formData.get('model') as string || 'whisper-large-v3'
+    const model = formData.get('model') as string || 'whisper-large-v3-turbo'
 
     if (!audioFile) {
       return NextResponse.json(

@@ -61,6 +61,7 @@ export class GroqAPIClient {
         method: 'POST',
         body: formData,
       })
+      console.log('API Response:', response)
 
       if (!response.ok) {
         const errorData = await response.json()

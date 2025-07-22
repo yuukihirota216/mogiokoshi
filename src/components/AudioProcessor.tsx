@@ -31,7 +31,7 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
   })
   
   const [settings, setSettings] = useState({
-    segmentDuration: 5, // 5秒（推奨）
+    segmentDuration: 30, // 30秒（デフォルト）
     overlap: 1, // 1秒のオーバーラップ
     language: 'ja',
     concurrency: 1 // デフォルトを1に変更（安定性重視）
@@ -298,14 +298,13 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
                   onChange={(e) => setSettings(prev => ({ ...prev, segmentDuration: Number(e.target.value) }))}
                   className="w-full mt-1 p-2 border rounded"
                 >
-                  <option value={5}>5秒（Hobby推奨）</option>
-                  <option value={10}>10秒（Hobby）</option>
-                  <option value={15}>15秒（Pro推奨）</option>
-                  <option value={20}>20秒（Pro）</option>
-                  <option value={30}>30秒（Enterprise）</option>
+                  <option value={30}>30秒</option>
+                  <option value={60}>1分</option>
+                  <option value={300}>5分</option>
+                  <option value={600}>10分</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Hobbyプラン: 5-10秒推奨 | Proプラン: 15-20秒推奨
+                  セグメント長を30秒・1分・5分・10分から選択できます
                 </p>
               </div>
               <div>
