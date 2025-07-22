@@ -298,13 +298,14 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
                   onChange={(e) => setSettings(prev => ({ ...prev, segmentDuration: Number(e.target.value) }))}
                   className="w-full mt-1 p-2 border rounded"
                 >
+                  <option value={20}>20秒</option>
                   <option value={25}>25秒</option>
                   <option value={30}>30秒</option>
                   <option value={35}>35秒</option>
                   <option value={40}>40秒</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  セグメント長を25秒・30秒・35秒・40秒から選択できます
+                  セグメント長を20秒・25秒・30秒・35秒・40秒から選択できます
                 </p>
               </div>
               <div>
