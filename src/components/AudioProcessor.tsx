@@ -48,26 +48,25 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
   }, [])
 
   // ファイルサイズに基づく自動設定
-  useEffect(() => {
-    if (file && isClient) {
-      const fileSizeMB = file.size / 1024 / 1024
-      
-      // 大きなファイルの場合、より効率的な設定に調整
-      if (fileSizeMB > 50) {
-        setSettings(prev => ({
-          ...prev,
-          segmentDuration: 120, // 2分セグメント
-          concurrency: 2 // 並列数を減らして安定性を向上
-        }))
-      } else if (fileSizeMB > 20) {
-        setSettings(prev => ({
-          ...prev,
-          segmentDuration: 90, // 1.5分セグメント
-          concurrency: 3
-        }))
-      }
-    }
-  }, [file, isClient])
+  // useEffect(() => {
+  //   if (file && isClient) {
+  //     const fileSizeMB = file.size / 1024 / 1024
+  //     // 大きなファイルの場合、より効率的な設定に調整
+  //     if (fileSizeMB > 50) {
+  //       setSettings(prev => ({
+  //         ...prev,
+  //         segmentDuration: 120, // 2分セグメント
+  //         concurrency: 2 // 並列数を減らして安定性を向上
+  //       }))
+  //     } else if (fileSizeMB > 20) {
+  //       setSettings(prev => ({
+  //         ...prev,
+  //         segmentDuration: 90, // 1.5分セグメント
+  //         concurrency: 3
+  //       }))
+  //     }
+  //   }
+  // }, [file, isClient])
 
   const initializeProcessors = useCallback(() => {
     if (!isClient) {
