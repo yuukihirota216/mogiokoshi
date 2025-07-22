@@ -116,12 +116,16 @@ export class GroqAPIClient {
     const errors: Array<{ index: number; error: string; retryCount: number }> = []
     const failedSegments: Array<{ blob: Blob; index: number; startTime: number; endTime: number; retryCount: number }> = []
 
+    console.log(`=== 並列文字起こし開始 ===`)
+    console.log(`セグメント数: ${segments.length}, 並列数: ${concurrency}`)
+
     // セマフォを使用した並列制御
     const semaphore = new Semaphore(concurrency)
     
     const processSegment = async (segment: { blob: Blob; index: number; startTime: number; endTime: number }, retryCount: number = 0) => {
       return semaphore.acquire(async () => {
         try {
+          console.log(`セグメント ${segment.index} の処理開始 (リトライ: ${retryCount})`)
           const result = await this.transcribeAudio(segment.blob, options, retryCount)
           const resultWithMeta = {
             ...result,
@@ -130,6 +134,8 @@ export class GroqAPIClient {
             endTime: segment.endTime
           }
           results.push(resultWithMeta)
+          
+          console.log(`セグメント ${segment.index} 成功: ${result.text.length}文字`)
           
           if (onProgress) {
             onProgress(results.length + errors.length, segments.length)
@@ -144,6 +150,8 @@ export class GroqAPIClient {
             retryCount
           }
           errors.push(errorInfo)
+          
+          console.error(`セグメント ${segment.index} 失敗:`, errorMessage)
           
           // リトライ可能なエラーの場合、失敗したセグメントリストに追加
           if (retryCount < 2 && !errorMessage.includes('APIキーが無効')) {
@@ -168,7 +176,7 @@ export class GroqAPIClient {
     
     // 失敗したセグメントをリトライ
     if (failedSegments.length > 0) {
-      console.log(`Retrying ${failedSegments.length} failed segments...`)
+      console.log(`リトライ開始: ${failedSegments.length}個のセグメント`)
       
       const retryPromises = failedSegments.map(segment => 
         processSegment(segment, segment.retryCount)
@@ -179,8 +187,11 @@ export class GroqAPIClient {
     // 最終的なエラー統計
     const finalErrors = errors.filter(e => e.retryCount >= 2 || e.error.includes('APIキーが無効'))
     if (finalErrors.length > 0) {
-      console.warn(`${finalErrors.length} segments failed to transcribe after retries:`, finalErrors)
+      console.warn(`${finalErrors.length}個のセグメントが最終的に失敗:`, finalErrors)
     }
+
+    console.log(`=== 並列文字起こし完了 ===`)
+    console.log(`成功: ${results.length}, 失敗: ${finalErrors.length}`)
 
     // 結果をインデックス順にソート
     results.sort((a, b) => a.index - b.index)

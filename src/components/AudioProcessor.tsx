@@ -31,10 +31,10 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
   })
   
   const [settings, setSettings] = useState({
-    segmentDuration: 60, // 60秒
+    segmentDuration: 5, // 5秒（推奨）
     overlap: 1, // 1秒のオーバーラップ
     language: 'ja',
-    concurrency: 3 // デフォルトを3に変更
+    concurrency: 1 // デフォルトを1に変更（安定性重視）
   })
 
   const [isClient, setIsClient] = useState(false)
@@ -86,6 +86,13 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
     if (!file) return
 
     try {
+      console.log('=== 音声処理開始 ===')
+      console.log('ファイル情報:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      })
+
       initializeProcessors()
       abortControllerRef.current = new AbortController()
 
@@ -103,7 +110,18 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
         overlap: settings.overlap
       }
 
+      console.log('分割オプション:', splitOptions)
+
       const segments = await audioUtilRef.current!.splitAudioFile(file, splitOptions)
+      
+      console.log('分割結果:', {
+        segmentsCount: segments.length,
+        segments: segments.map(s => ({
+          index: s.index,
+          duration: s.duration,
+          blobSize: s.blob.size
+        }))
+      })
       
       if (segments.length === 0) {
         throw new Error('音声ファイルの分割に失敗しました')
@@ -129,11 +147,18 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
         endTime: segment.endTime
       }))
 
+      console.log('文字起こし開始:', {
+        segmentCount: segmentData.length,
+        concurrency: settings.concurrency,
+        language: settings.language
+      })
+
       const results = await apiClientRef.current!.transcribeMultipleSegments(
         segmentData,
         transcriptionOptions,
         (completed, total) => {
           const progressPercent = (completed / total) * 100
+          console.log(`進捗: ${completed}/${total} (${progressPercent.toFixed(1)}%)`)
           setProcessing(prev => ({
             ...prev,
             progress: progressPercent,
@@ -143,6 +168,15 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
         },
         settings.concurrency
       )
+
+      console.log('文字起こし結果:', {
+        successCount: results.length,
+        results: results.map(r => ({
+          index: r.index,
+          textLength: r.text.length,
+          segmentsCount: r.segments.length
+        }))
+      })
 
       // 3. 結果統合段階
       setProcessing(prev => ({
@@ -158,6 +192,13 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
       const successCount = results.length
       const totalSegments = segments.length
       const failedCount = totalSegments - successCount
+      
+      console.log('処理完了:', {
+        successCount,
+        failedCount,
+        totalSegments,
+        mergedTextLength: mergedResult.text.length
+      })
       
       let completionMessage = '文字起こしが完了しました！'
       if (failedCount > 0) {
@@ -175,6 +216,7 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
       onTranscriptionComplete(mergedResult)
 
     } catch (error) {
+      console.error('=== 音声処理エラー ===', error)
       const errorMessage = error instanceof Error ? error.message : '予期しないエラーが発生しました'
       setProcessing({
         stage: 'error',
@@ -257,11 +299,15 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
                   onChange={(e) => setSettings(prev => ({ ...prev, segmentDuration: Number(e.target.value) }))}
                   className="w-full mt-1 p-2 border rounded"
                 >
-                  <option value={30}>30秒（短い音声）</option>
-                  <option value={60}>60秒（標準）</option>
-                  <option value={90}>90秒（長い音声）</option>
-                  <option value={120}>120秒（2時間以上）</option>
+                  <option value={5}>5秒（Hobby推奨）</option>
+                  <option value={10}>10秒（Hobby）</option>
+                  <option value={15}>15秒（Pro推奨）</option>
+                  <option value={20}>20秒（Pro）</option>
+                  <option value={30}>30秒（Enterprise）</option>
                 </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Hobbyプラン: 5-10秒推奨 | Proプラン: 15-20秒推奨
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium">並列処理数</label>
