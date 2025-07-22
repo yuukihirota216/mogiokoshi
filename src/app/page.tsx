@@ -46,23 +46,6 @@ export default function Home() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             音声文字起こしツール
           </h1>
-          <p className="text-lg text-gray-600 mb-4">
-            Groq Whisper APIを使用した高速並列文字起こし
-          </p>
-          <div className="inline-flex items-center space-x-4 text-sm text-gray-500">
-            <span className="flex items-center">
-              <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-              Web Audio API
-            </span>
-            <span className="flex items-center">
-              <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-              並列処理
-            </span>
-            <span className="flex items-center">
-              <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
-              高速文字起こし
-            </span>
-          </div>
         </div>
 
         {/* エラー表示 */}
@@ -128,11 +111,7 @@ export default function Home() {
             <p>エクスポート形式: TXT, SRT, VTT, JSON</p>
             <div className="flex justify-center items-center space-x-4 mt-4">
               <span>Powered by</span>
-              <span className="font-semibold">Groq Whisper API</span>
-              <span>•</span>
-              <span className="font-semibold">Next.js 14</span>
-              <span>•</span>
-              <span className="font-semibold">Web Audio API</span>
+              <span className="font-semibold">有限会社TMD</span>
             </div>
           </div>
         </footer>
