@@ -257,7 +257,7 @@ class Semaphore {
   private permits: number
   private tasks: Array<() => void> = []
   private lastRequestTime: number = 0
-  private readonly minInterval: number = 3000 // 3秒間隔（20リクエスト/分の制限を考慮）
+  private readonly minInterval: number = 2500 // 2.5秒間隔（レート制限対策）
 
   constructor(permits: number) {
     this.permits = permits

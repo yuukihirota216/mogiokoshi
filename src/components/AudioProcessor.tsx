@@ -31,10 +31,10 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
   })
   
   const [settings, setSettings] = useState({
-    segmentDuration: 30, // 30秒（デフォルト）
+    segmentDuration: 20, // 20秒（デフォルト）
     overlap: 1, // 1秒のオーバーラップ
     language: 'ja',
-    concurrency: 1 // デフォルトを1に変更（安定性重視）
+    concurrency: 3 // 3並列（デフォルト）
   })
 
   const [isClient, setIsClient] = useState(false)
@@ -302,10 +302,9 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
                   <option value={25}>25秒</option>
                   <option value={30}>30秒</option>
                   <option value={35}>35秒</option>
-                  <option value={40}>40秒</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  セグメント長を20秒・25秒・30秒・35秒・40秒から選択できます
+                  セグメント長を20秒・25秒・30秒・35秒から選択できます
                 </p>
               </div>
               <div>
@@ -316,12 +315,12 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
                   className="w-full mt-1 p-2 border rounded"
                 >
                   <option value={1}>1並列（安定性重視）</option>
-                  <option value={2}>2並列（推奨）</option>
-                  <option value={3}>3並列</option>
-                  <option value={5}>5並列（注意）</option>
+                  <option value={2}>2並列</option>
+                  <option value={3}>3並列（デフォルト）</option>
+                  <option value={4}>4並列</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  長い音声ファイルは並列数を下げると安定します
+                  並列数を1～4から選択できます。長い音声ファイルは並列数を下げると安定します
                 </p>
               </div>
             </div>
@@ -356,7 +355,7 @@ export default function AudioProcessor({ file, onTranscriptionComplete, onError 
             {processing.stage === 'transcribing' && processing.segmentsTotal > 0 && (
               <div className="text-xs text-gray-500 space-y-1">
                 <div>推定残り時間: {Math.ceil((processing.segmentsTotal - processing.segmentsProcessed) / settings.concurrency * 3)}秒</div>
-                <div>レート制限対策: リクエスト間隔を3秒に調整中</div>
+                <div>レート制限対策: リクエスト間隔を2.5秒に調整中</div>
                 {settings.concurrency > 3 && (
                   <div className="text-orange-600">⚠️ 並列数を下げるとレート制限エラーを減らせます</div>
                 )}
