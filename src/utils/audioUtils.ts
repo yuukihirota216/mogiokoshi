@@ -51,6 +51,14 @@ export class AudioProcessor {
     options: AudioSplitOptions = { segmentDuration: 60, overlap: 1 }
   ): Promise<AudioSegment[]> {
     try {
+      console.log('=== 音声分割開始 ===')
+      console.log('ファイル情報:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      })
+      console.log('分割オプション:', options)
+
       // ブラウザ環境チェック
       if (typeof window === 'undefined') {
         throw new Error('音声処理はブラウザ環境でのみ実行可能です')
@@ -61,13 +69,46 @@ export class AudioProcessor {
         throw new Error('お使いのブラウザはWeb Audio APIをサポートしていません')
       }
 
+      console.log('Web Audio API対応確認完了')
+
       const audioContext = await this.initAudioContext()
+      console.log('AudioContext初期化完了:', audioContext.state)
+
       const arrayBuffer = await file.arrayBuffer()
+      console.log('ファイル読み込み完了:', arrayBuffer.byteLength, 'bytes')
+
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      console.log('音声デコード完了:', {
+        duration: audioBuffer.duration,
+        sampleRate: audioBuffer.sampleRate,
+        numberOfChannels: audioBuffer.numberOfChannels,
+        length: audioBuffer.length
+      })
       
-      return this.splitAudioBuffer(audioBuffer, options)
+      const segments = this.splitAudioBuffer(audioBuffer, options)
+      
+      console.log('分割完了:', {
+        segmentsCount: segments.length,
+        segments: segments.map(s => ({
+          index: s.index,
+          duration: s.duration,
+          blobSize: s.blob.size,
+          startTime: s.startTime,
+          endTime: s.endTime
+        }))
+      })
+
+      // ファイルサイズチェック
+      const maxSize = 20 * 1024 * 1024 // 20MB（Vercel制限の余裕を持って）
+      const oversizedSegments = segments.filter(s => s.blob.size > maxSize)
+      if (oversizedSegments.length > 0) {
+        console.warn(`${oversizedSegments.length}個のセグメントが大きすぎます:`, 
+          oversizedSegments.map(s => ({ index: s.index, size: s.blob.size })))
+      }
+
+      return segments
     } catch (error) {
-      console.error('Audio splitting failed:', error)
+      console.error('=== 音声分割エラー ===', error)
       
       // エラーの種類に応じたメッセージ
       if (error instanceof Error) {
@@ -160,7 +201,10 @@ export class AudioProcessor {
     const length = buffer.length
     const numberOfChannels = buffer.numberOfChannels
     const sampleRate = buffer.sampleRate
-    const bytesPerSample = 2
+    
+    // プランに応じて音声品質を調整（環境変数で判定）
+    const isProPlan = process.env.NODE_ENV === 'production' // 簡易判定
+    const bytesPerSample = isProPlan ? 2 : 1 // Pro: 16ビット, Hobby: 8ビット
     const blockAlign = numberOfChannels * bytesPerSample
     const byteRate = sampleRate * blockAlign
     const dataSize = length * blockAlign
@@ -190,7 +234,7 @@ export class AudioProcessor {
     writeString(36, 'data')
     view.setUint32(40, dataSize, true)
     
-    // 音声データの書き込み
+    // 音声データの書き込み（プランに応じて品質調整）
     const channelData = []
     for (let channel = 0; channel < numberOfChannels; channel++) {
       channelData.push(buffer.getChannelData(channel))
@@ -200,8 +244,17 @@ export class AudioProcessor {
     for (let i = 0; i < length; i++) {
       for (let channel = 0; channel < numberOfChannels; channel++) {
         const sample = Math.max(-1, Math.min(1, channelData[channel][i]))
-        view.setInt16(offset, sample * 0x7FFF, true)
-        offset += 2
+        
+        if (isProPlan) {
+          // Proプラン: 16ビット品質
+          view.setInt16(offset, sample * 0x7FFF, true)
+          offset += 2
+        } else {
+          // Hobbyプラン: 8ビット品質（ファイルサイズ削減）
+          const quantizedSample = Math.round(sample * 127)
+          view.setInt8(offset, quantizedSample)
+          offset += 1
+        }
       }
     }
     
