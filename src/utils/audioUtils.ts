@@ -98,6 +98,13 @@ export class AudioProcessor {
         }))
       })
 
+      // 各セグメントごとのサイズ・時間を個別に出力
+      segments.forEach(s => {
+        console.log(
+          `セグメント${s.index}: サイズ=${s.blob.size} bytes, 開始=${s.startTime}s, 終了=${s.endTime}s, 長さ=${s.duration}s`
+        )
+      })
+
       // ファイルサイズチェック
       const maxSize = 20 * 1024 * 1024 // 20MB（Vercel制限の余裕を持って）
       const oversizedSegments = segments.filter(s => s.blob.size > maxSize)
